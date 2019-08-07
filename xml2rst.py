@@ -87,7 +87,7 @@ def sphinx_setup(vals,docspath):
                         "-p "+vals["PROJECT_NAME"],
                         "-a "+vals["AUTHOR"],
                         "-v "+vals["VERSION"],
-                        "-r "vals["VERSION"]+vals["EXTVERSION"],
+                        "-r "+vals["VERSION"]+vals["EXTVERSION"],
                         "--epub",
                         "--sep",
                         "-l English",
@@ -130,7 +130,7 @@ def wizzard ( ):
     vals["DOCS"] = os.path.relpath(docspath,rootpath)
     #generate doxyfile and keep the path
     doxyfile_file = doxyfile_gen(vals,rel_srcpath,docspath)
-    vals["DOXYFILE"] = os.path.relpath(srcpath,doxyfile_file)
+    vals["DOXYFILE"] = os.path.relpath(doxyfile_file,rootpath)
 
     if os.path.isfile(version_file):
         print("File " + version_file +
