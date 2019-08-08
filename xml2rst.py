@@ -3,9 +3,27 @@
 import os
 import re
 import sys
+import glob
 import string
 import shutil
 import subprocess
+
+def yes_or_no(question):
+    answer = input(question + "(y/n): ").lower().strip()
+    print("")
+    while not(answer == "y" or answer == "yes" or \
+    answer == "n" or answer == "no"):
+        print("Answer with a yes or no!")
+        answer = input(question + "(y/n):").lower().strip()
+        print("")
+    if answer[0] == "y":
+        return True
+    else:
+        return False
+
+def find_file(filename,folder):
+    return files
+
 
 def check_not_empty(text):
 
@@ -46,7 +64,7 @@ def doxyfile_gen(vals,srcpath,docspath):
             "PROJECT_LOGO":"", # to be added
             "OUTPUT_DIRECTORY":".", #not defined for now
             "OUTPUT_LANGUAGE":"\"English\"",
-            "INPUT":srcpath, #relative src path
+            "INPUT":os.path.relpath(srcpath,docspath), #relative src path
             "EXCLUDE":" ", #should allow exclude paths
             "CREATE_SUBDIRS":"YES",
             "OPTIMIZE_OUTPUT_FOR_C":"YES", # should make user choose
@@ -83,7 +101,7 @@ def doxyfile_gen(vals,srcpath,docspath):
     return doxyfile_file
 
 def sphinx_setup(vals,docspath):
-    subprocess.Popen(["sphinx-quickstart",
+    subprocess.call(["sphinx-quickstart",
                         "-p "+vals["PROJECT_NAME"],
                         "-a "+vals["AUTHOR"],
                         "-v "+vals["VERSION"],
@@ -105,12 +123,61 @@ def sphinx_setup(vals,docspath):
                  )
     print("Please press enter to continue")
 
-def sphinx_conf(version_file,docspath):
-    conf_file = docspath+"/source/conf.py"
-    with open(conf_file, "a") as f:
-        f.write("\na = 1")
+def sphinx_conf(folder):
+    xml2rst_file = "configs/conf.py"
+    content = ""
+    conf_file = glob.glob(folder + "/**/conf.py", recursive=True)
+    conf_file = conf_file[0]
 
-def wizzard ( ):
+    # search an replace in conf.py project variables such as project name etc.
+    with open(conf_file, "r") as f:
+        lines = f.readlines()
+    with open(conf_file, "w") as f:
+        for line in lines:
+            if line.startswith("project = "):
+                f.write("project = config[\"PROJECT_NAME\"]\n")
+            elif line.startswith("copyright = "):
+                f.write("copyright = config[\"AUTHOR\"]\n")
+            elif line.startswith("author ="):
+                f.write("author = config[\"AUTHOR\"]\n") #todo: separate author
+                                                         # and copyright
+            elif line.startswith("version = "):
+                f.write("version = config[\"VERSION\"]\n")
+            elif line.startswith("release = "):
+                f.write("release = config[\"VERSION\"]+config[\"EXTVERSION\"]\n")
+            else:
+                f.write(line)
+    f.close()
+
+    with open(xml2rst_file) as f:
+        content = f.read()
+
+    match_start = re.search(r'#START-XML2RST(.*?)#END-XML2RST',content,re.DOTALL)
+    match_end   = re.search(r'#START-BREATH(.*?)#END-BREATH',content,re.DOTALL)
+
+    if match_start.group(1):
+        code_on_head = match_start.group(1)
+    else:
+        return False
+
+    if match_end.group(1):
+        code_on_bottom = match_end.group(1)
+    else:
+        return False
+
+    with open(conf_file,'a') as f:
+        f.write(code_on_bottom)
+    f.close()
+
+    with open(conf_file, 'r+') as f:
+        content = f.read()
+        f.seek(0, 0)
+        f.write(code_on_head.rstrip('\r\n') + '\n' + content)
+    f.close()
+
+    return True
+
+def wizzard ():
     vals = dict()
     version_file = "VERSIONS"
     # retrieve paths and normalize relative to docs path
@@ -126,10 +193,14 @@ def wizzard ( ):
     vals["VERSION"] = check_not_empty("Release: ")
     vals["EXTVERSION"] = input("Extra version eg. -rc-1 (optional): ")
     vals["AUTHOR"] = check_not_empty("Author(s) :")
+    if yes_or_no("You want to enable Read The Docs template?"):
+        vals["READTHEDOCS"] = True
+    else:
+        vals["READTHEDOCS"] = False
     vals["SRC"]= rel_srcpath
     vals["DOCS"] = os.path.relpath(docspath,rootpath)
     #generate doxyfile and keep the path
-    doxyfile_file = doxyfile_gen(vals,rel_srcpath,docspath)
+    doxyfile_file = doxyfile_gen(vals,srcpath,docspath)
     vals["DOXYFILE"] = os.path.relpath(doxyfile_file,rootpath)
 
     if os.path.isfile(version_file):
@@ -139,15 +210,14 @@ def wizzard ( ):
 
     with open(version_file, 'w') as data:
         for key, val in vals.items():
-            data.write('%s=%s\n' % (key, val))
+            data.write("%s=%s\n" % (key, val))
     data.close()
-    #run doxygen Doxyfile to docs path
-    #subprocess.Popen(["doxygen",docspath+"/Doxyfile"], cwd=docspath)
     sphinx_setup(vals,docspath)
-    #sphinx_conf(version_file,docspath) #should check for versions file before
-
+    sphinx_conf(docspath) #should check for versions file before
+    print("Everything is ready, you can now generate your documentation by just"
+            +" using Makefile on your docs path")
 def main():
     wizzard()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
