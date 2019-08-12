@@ -1,5 +1,6 @@
 Sphinx
 sphinx-rtd-theme
-sphinxcontrib-phpdomain
 breathe
+sphinxcontrib-fulltoc
+sphinxcontrib-phpdomain
 m2r
