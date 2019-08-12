@@ -111,7 +111,8 @@ config = get_configs()
 if not config:
     print ("Error! Please check your VERSIONS file in root path")
     exit()
-# Ask to run doxygen XML generation
+
+#Ask to run doxygen XML generation
 if yes_or_no("Do you want to run doxygen XML generation?"):
     subprocess.call(["doxygen",config["DOXYFILE"]]
                     ,cwd=config["DOCS"]
@@ -121,17 +122,33 @@ else:
     print("ok we will continue...")
 
 # generate sources
+subprocess.call(['python',
+                'generate.py',
+                config["SRC"],
+                os.getcwd(),
+                config["EXCLUDED"]]
+                )
 
 #END-XML2RST
 
 #START-BREATH
-# Breath settings for Sphinx
-
+# PHP and BREATH Settings for Sphinx
+extensions += ['sphinxcontrib.phpdomain']
 extensions += ['breathe']
+
+# Set up PHP syntax highlights
+from sphinx.highlighting import lexers
+from pygments.lexers.web import PhpLexer
+lexers["php"] = PhpLexer(startinline=True, linenos=1)
+lexers["php-annotations"] = PhpLexer(startinline=True, linenos=1)
+primary_domain = "php"
+
+#setup breath
 breathe_projects = {config["PROJECT_NAME"]:config["DOXYFILE_XML"]}
-if config["READTHEDOCS"]:
+if config["READTHEDOCS"] == True:
   import sphinx_rtd_theme
   html_theme = "sphinx_rtd_theme"
   html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 breathe_default_project = config["PROJECT_NAME"]
+breathe_implementation_filename_extensions = ['.php']
 #END-BREATH
